@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
             output.push_back(outBuf[i]);
         }
 
-        // Заканчиваем работу с cipher
+        // Заканчfиваем работу с cipher
         EVP_CipherFinal_ex(ctx, outBuf.data(), &outLen);
         for (int i = 0; i < outLen; ++i) {
             output.push_back(outBuf[i]);
@@ -78,6 +78,7 @@ int main(int argc, char *argv[]) {
         //
 
         CryptoGuard::ProgramOptions options;
+        options.Parse(argc, argv);
 
         CryptoGuard::CryptoGuardCtx cryptoCtx;
 
