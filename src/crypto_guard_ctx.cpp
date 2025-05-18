@@ -1,7 +1,7 @@
 #include "crypto_guard_ctx.h"
 
 #include <cstring>
-#include <filesystem>
+#include <memory>
 #include <openssl/evp.h>
 #include <stdexcept>
 #include <vector>
@@ -32,9 +32,33 @@ public:
     void DecryptFile(std::iostream &in, std::iostream &out, std::string_view password) {
         runAes(in, out, password, false);
     }
-    std::string CalculateChecksum(std::iostream &inStream) { 
-        UniquePtrMdCtx ctx;
-        return "NOT_IMPLEMENTED"; 
+    std::string CalculateChecksum(std::iostream &in) { 
+        UniquePtrMdCtx ctx { EVP_MD_CTX_new() };
+        const EVP_MD* hash_func = EVP_sha256();
+
+        if (!EVP_DigestInit_ex2(ctx.get(), hash_func, NULL)) {
+            throw std::domain_error("Message digest initialization failed");
+        }
+        std::vector<unsigned char> inBuf(EVP_MD_size(hash_func));
+        std::vector<unsigned char> resultBuf(EVP_MD_size(hash_func));
+        unsigned int hash_len;
+
+        while (in.readsome(reinterpret_cast<char*>(inBuf.data()), inBuf.size())) {
+            if (!EVP_DigestUpdate(ctx.get(), inBuf.data(), static_cast<int>( in.gcount() ))) {
+                throw std::runtime_error("Message digest initialization failed");
+            }
+        }
+        
+        if (!EVP_DigestFinal_ex(ctx.get(), resultBuf.data(), &hash_len)) {
+            throw std::runtime_error("Message digest finalization failed");
+        }
+
+        std::string result;
+        for (size_t i = 0; i < std::min(resultBuf.size(), static_cast<size_t>(hash_len)); ++i) {
+            result.append(std::format("{0:02x}", resultBuf[i]));
+        }
+        
+        return result;
     }
 
 private:
@@ -82,8 +106,6 @@ private:
                 inBuf.data(), static_cast<int>( in.gcount() ))) {
                 throw std::runtime_error(std::string("EVP_CipherUpdate failed: ") + strerror(errno));
             }
-            std::cout << "EVP_CipherUpdate.outlen = " << outLen 
-                << "  read " << in.gcount() << "\tbytes" << std::endl;
             out.write(reinterpret_cast<char*>(outBuf.data()), outLen);
         }
 
@@ -113,7 +135,7 @@ void CryptoGuardCtx::DecryptFile(std::iostream &in, std::iostream &out, std::str
     pImpl_->DecryptFile(in, out, password);
 }
 std::string CryptoGuardCtx::CalculateChecksum(std::iostream &in) { 
-    pImpl_->CalculateChecksum(in);
+    return pImpl_->CalculateChecksum(in);
 }
 
 }  // namespace CryptoGuard
