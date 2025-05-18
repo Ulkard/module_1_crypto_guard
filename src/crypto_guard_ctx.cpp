@@ -3,6 +3,7 @@
 #include <cstring>
 #include <memory>
 #include <openssl/evp.h>
+#include <openssl/err.h>
 #include <stdexcept>
 #include <vector>
 #include <print>
@@ -37,7 +38,7 @@ public:
         const EVP_MD* hash_func = EVP_sha256();
 
         if (!EVP_DigestInit_ex2(ctx.get(), hash_func, NULL)) {
-            throw std::domain_error("Message digest initialization failed");
+            throw std::runtime_error(formatSslError("Message digest initialization failed"));
         }
         std::vector<unsigned char> inBuf(EVP_MD_size(hash_func));
         std::vector<unsigned char> resultBuf(EVP_MD_size(hash_func));
@@ -45,12 +46,12 @@ public:
 
         while (in.readsome(reinterpret_cast<char*>(inBuf.data()), inBuf.size())) {
             if (!EVP_DigestUpdate(ctx.get(), inBuf.data(), static_cast<int>( in.gcount() ))) {
-                throw std::runtime_error("Message digest initialization failed");
+                throw std::runtime_error(formatSslError("Message digest initialization failed"));
             }
         }
         
         if (!EVP_DigestFinal_ex(ctx.get(), resultBuf.data(), &hash_len)) {
-            throw std::runtime_error("Message digest finalization failed");
+            throw std::runtime_error(formatSslError("Message digest finalization failed"));
         }
 
         std::string result;
@@ -72,7 +73,7 @@ private:
             password.size(), 1, params.key.data(), params.iv.data());
 
         if (result == 0) {
-            throw std::runtime_error{"Failed to create a key from password"};
+            throw std::runtime_error(formatSslError("Failed to create a key from password"));
         }
 
         return params;
@@ -93,7 +94,7 @@ private:
         // Инициализируем cipher
         if (!EVP_CipherInit_ex(ctx.get(), params.cipher, nullptr, 
             params.key.data(), params.iv.data(), params.encrypt)) {
-                throw std::runtime_error(std::string("EVP_CipherUpdate failed: ") + strerror(errno));
+                throw std::runtime_error(formatSslError("EVP_CipherUpdate failed"));
         }
 
         std::vector<unsigned char> outBuf(16 + EVP_MAX_BLOCK_LENGTH);
@@ -104,19 +105,21 @@ private:
             // Обрабатываем первые N символов
             if(!EVP_CipherUpdate(ctx.get(), outBuf.data(), &outLen, 
                 inBuf.data(), static_cast<int>( in.gcount() ))) {
-                throw std::runtime_error(std::string("EVP_CipherUpdate failed: ") + strerror(errno));
+                throw std::runtime_error(formatSslError("EVP_CipherUpdate failed"));
             }
             out.write(reinterpret_cast<char*>(outBuf.data()), outLen);
         }
 
         // Заканчиваем работу с cipher
         if (!EVP_CipherFinal_ex(ctx.get(), outBuf.data(), &outLen)) {
-            throw std::runtime_error(std::string("EVP_CipherUpdate failed: ") + strerror(errno));
+            throw std::runtime_error(formatSslError("EVP_CipherUpdate failed"));
         }
         out.write(reinterpret_cast<char*>(outBuf.data()), outLen);
-
-        std::print("runAes() done.\n");
         EVP_cleanup();
+    }
+
+    std::string formatSslError(const std::string& message) {
+        return std::format("{}. {}", message, ERR_error_string(ERR_get_error(), NULL));
     }
 };
 

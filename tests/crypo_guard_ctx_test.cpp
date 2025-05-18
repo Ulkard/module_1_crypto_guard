@@ -1,10 +1,8 @@
 #include <gtest/gtest.h>
-#include <ios>
 #include <sstream>
 #include <stdexcept>
 
 #include "crypto_guard_ctx.h"
-#include "openssl/evp.h"
 
 
 TEST(CryptoGuardCtx, ValidInputShort) { 

@@ -29,26 +29,26 @@ bool ProgramOptions::Parse(int argc, char *argv[]) {
         commandMapping_.contains(vm["command"].as<std::string>())) {
         command_ = commandMapping_.at(vm["command"].as<std::string>());
     } else {
-        std::print("Error! command not found");
+        std::print("Error! command not found\n");
         return false;
     }
     if (vm.count("input")) {
         inputFile_ = vm["input"].as<std::string>();
     } else {
-        std::print("Error! input path not set");
+        std::print("Error! input path not set\n");
         return false;
     }
     if (vm.count("output")) {
         outputFile_ = vm["output"].as<std::string>();
-    } else {
-        std::print("Error! output path not set");
+    } else if (command_ != COMMAND_TYPE::CHECKSUM) {
+        std::print("Error! output path not set\n");
         return false;
     }
     if (vm.count("password")) {
         password_ = vm["password"].as<std::string>();
-    } else {
+    } else if (command_ != COMMAND_TYPE::CHECKSUM){
         password_ = "";
-        std::print("Warning! empty password");
+        std::print("Warning! empty password\n");
     }
     
     return false; 

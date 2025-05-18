@@ -1,30 +1,39 @@
 #include "cmd_options.h"
 #include "crypto_guard_ctx.h"
-#include <iostream>
+
+#include <fstream>
+#include <ios>
 #include <print>
 #include <stdexcept>
-#include <string>
 
 
 int main(int argc, char *argv[]) {
     try {
         CryptoGuard::ProgramOptions options;
-        options.Parse(argc, argv);
-
+        if (!options.Parse(argc, argv)) {
+            
+        };
+        std::fstream in(options.GetInputFile(), std::ios_base::in);
+        std::fstream out;
+        if (!options.GetOutputFile().empty()) {
+            out.open(options.GetOutputFile(), std::ios_base::out);
+        }
         CryptoGuard::CryptoGuardCtx cryptoCtx;
 
         using COMMAND_TYPE = CryptoGuard::ProgramOptions::COMMAND_TYPE;
         switch (options.GetCommand()) {
         case COMMAND_TYPE::ENCRYPT:
+            cryptoCtx.EncryptFile(in, out, options.GetPassword());
             std::print("File encoded successfully\n");
             break;
 
         case COMMAND_TYPE::DECRYPT:
+            cryptoCtx.DecryptFile(in, out, options.GetPassword());
             std::print("File decoded successfully\n");
             break;
 
         case COMMAND_TYPE::CHECKSUM:
-            std::print("Checksum: {}\n", "CHECKSUM_NOT_IMPLEMENTED");
+            std::print("Checksum: {}\n", cryptoCtx.CalculateChecksum(in));
             break;
 
         default:
