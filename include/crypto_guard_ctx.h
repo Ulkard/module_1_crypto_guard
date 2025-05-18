@@ -2,13 +2,14 @@
 
 #include <memory>
 #include <string>
+#include <iostream>
 
 namespace CryptoGuard {
 
 class CryptoGuardCtx {
 public:
     CryptoGuardCtx();
-    ~CryptoGuardCtx() = default;
+    ~CryptoGuardCtx();
 
     CryptoGuardCtx(const CryptoGuardCtx &) = delete;
     CryptoGuardCtx &operator=(const CryptoGuardCtx &) = delete;
